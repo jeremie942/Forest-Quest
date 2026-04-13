@@ -1,141 +1,63 @@
 import pygame
 import sys
-from menu import afficher_menu
+from menu import afficher_menu, ecran_fin
 from game import jeu
+from codecarbon import EmissionsTracker
 
-pygame.init()
+tracker = EmissionsTracker()
+tracker.start()
 
-# Initialisation de la fenetre
-largeur, hauteur = 800, 600
-fenetre = pygame.display.set_mode((largeur, hauteur))
-pygame.display.set_caption("Forest Quest")
+try:
 
+    pygame.init()
 
-# ======================
-# 🎨 ÉCRAN FIN (victoire / game over)
-# ======================
-def ecran_fin(fenetre, largeur, hauteur, texte, couleur):
+    # Initialisation de la fenetre
+    largeur, hauteur = 800, 600
+    fenetre = pygame.display.set_mode((largeur, hauteur))
+    pygame.display.set_caption("Forest Quest")
 
-    souris = pygame.mouse.get_pos()
+    running = True
+    etat = "menu" # Indique dans quelle fenetre le jeu est
+    # Boucle principale de pycharm
+    while running:
 
-    # 🌿 fond
-    fenetre.fill((34, 120, 60))
+        fenetre.fill((0, 0, 0))
 
-    # 🟫 overlay sombre
-    overlay = pygame.Surface((largeur, hauteur))
-    overlay.set_alpha(120)
-    overlay.fill((0, 0, 0))
-    fenetre.blit(overlay, (0, 0))
+        # Gestion des états de l'écran pour passer du menu à la fenêtre de jeu
+        if etat == "menu":
+            # On récupère les boutons jouer et quitter pour pouvoir savoir quand le joueur appuis dessus
+            bouton_jouer, bouton_quitter = afficher_menu(fenetre, largeur, hauteur)
+        elif etat == "jeu":
+            etat = jeu(fenetre, largeur, hauteur)
+        elif etat == "victoire":
+            bouton_rejouer, bouton_menu_btn = ecran_fin(fenetre, largeur, hauteur,"VICTOIRE !", (0, 255, 0))
+        elif etat == "game_over":
+            bouton_rejouer, bouton_menu_btn = ecran_fin(fenetre, largeur, hauteur,"GAME OVER", (255, 50, 50))
 
-    # 🔤 polices
-    font_titre = pygame.font.SysFont("arial", 80, bold=True)
-    font_bouton = pygame.font.SysFont("arial", 40)
+        # Mise à jour de la fenêtre
+        pygame.display.flip()
 
-    # ✨ texte avec ombre
-    def texte_ombre(txt, font, couleur, center):
-        # Texte principal
-        rendu = font.render(txt, True, couleur)
-        rect = rendu.get_rect(center=center)
+        # Gestion des différents événement que le joueur peut faire
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            # Gestion de la souri
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                # Seulement si on est dans le menu du jeu
+                if etat == "menu":
+                    if bouton_jouer.collidepoint(event.pos): # Detection des collisions avec le bouton
+                        etat = "jeu"
+                    if bouton_quitter.collidepoint(event.pos): # Detection des collisions avec le bouton
+                        running = False
 
-        # Ombre (même base, juste décalée)
-        ombre = font.render(txt, True, (0, 0, 0))
-        rect_ombre = rect.copy()
-        rect_ombre.x += 3
-        rect_ombre.y += 3
+                # Gestion des écran de fin de partie en cas de victoire ou de défaite
+                elif etat in ["victoire", "game_over"]:
+                    if bouton_rejouer.collidepoint(event.pos):
+                        etat = "jeu"
+                    if bouton_menu_btn.collidepoint(event.pos):
+                        etat = "menu"
 
-        # Dessin
-        fenetre.blit(ombre, rect_ombre)
-        fenetre.blit(rendu, rect)
-
-    texte_ombre(texte, font_titre, couleur, (largeur // 2, 200))
-
-    # 🔘 boutons
-    bouton_rejouer = pygame.Rect(largeur // 2 - 120, 320, 240, 70)
-    bouton_menu = pygame.Rect(largeur // 2 - 120, 420, 240, 70)
-
-    def dessiner_bouton(rect, txt):
-        col = (50, 160, 90)
-        if rect.collidepoint(souris):
-            col = (70, 190, 110)
-
-        # ombre
-        ombre = rect.copy()
-        ombre.y += 5
-        pygame.draw.rect(fenetre, (0, 0, 0), ombre, border_radius=12)
-
-        # bouton
-        pygame.draw.rect(fenetre, col, rect, border_radius=12)
-
-        # texte
-        rendu = font_bouton.render(txt, True, (255, 255, 255))
-        fenetre.blit(rendu, rendu.get_rect(center=rect.center))
-
-    dessiner_bouton(bouton_rejouer, "Rejouer")
-    dessiner_bouton(bouton_menu, "Menu")
-
-    return bouton_rejouer, bouton_menu
-
-
-# ======================
-# 🔁 BOUCLE PRINCIPALE
-# ======================
-
-running = True
-etat = "menu"
-
-while running:
-
-    fenetre.fill((0, 0, 0))
-
-    # ======================
-    # 🎮 ÉTATS
-    # ======================
-    if etat == "menu":
-        bouton_jouer, bouton_quitter = afficher_menu(fenetre, largeur, hauteur)
-
-    elif etat == "jeu":
-        etat = jeu(fenetre, largeur, hauteur)
-
-    elif etat == "victoire":
-        bouton_rejouer, bouton_menu_btn = ecran_fin(
-            fenetre, largeur, hauteur,
-            "VICTOIRE !", (0, 255, 0)
-        )
-
-    elif etat == "game_over":
-        bouton_rejouer, bouton_menu_btn = ecran_fin(
-            fenetre, largeur, hauteur,
-            "GAME OVER", (255, 50, 50)
-        )
-
-    pygame.display.flip()
-
-    # ======================
-    # 🖱️ ÉVÉNEMENTS
-    # ======================
-    for event in pygame.event.get():
-
-        if event.type == pygame.QUIT:
-            running = False
-
-        if event.type == pygame.MOUSEBUTTONDOWN:
-
-            # MENU
-            if etat == "menu":
-                if bouton_jouer.collidepoint(event.pos):
-                    etat = "jeu"
-
-                if bouton_quitter.collidepoint(event.pos):
-                    running = False
-
-            # ÉCRANS FIN
-            elif etat in ["victoire", "game_over"]:
-
-                if bouton_rejouer.collidepoint(event.pos):
-                    etat = "jeu"
-
-                if bouton_menu_btn.collidepoint(event.pos):
-                    etat = "menu"
-
-pygame.quit()
-sys.exit()
+    pygame.quit()
+    sys.exit()
+finally:
+    tracker.stop()
